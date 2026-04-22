@@ -130,7 +130,7 @@ cd backend
 ```bash
 cd frontend
 npm install
-npm start
+ng serve --proxy-config proxy.conf.json
 ```
 
 Frontend URL:
@@ -173,7 +173,7 @@ Frontend build:
 
 ```bash
 cd frontend
-npm run build
+ng build
 ```
 
 ## Notes
