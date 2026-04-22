@@ -1,0 +1,12 @@
+services:
+  chroma:
+    image: ghcr.io/chroma-core/chroma:1.0.0
+    container_name: document-rag-chroma
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - chroma-data:/data
+
+volumes:
+  chroma-data:
