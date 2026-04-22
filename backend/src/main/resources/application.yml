@@ -1,0 +1,74 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: document-rag-backend
+  servlet:
+    multipart:
+      max-file-size: 25MB
+      max-request-size: 50MB
+  datasource:
+    url: jdbc:h2:file:./data/document-rag-db;AUTO_SERVER=TRUE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+  ai:
+    ollama:
+      base-url: http://localhost:11434
+      chat:
+        options:
+          model: llama3.2:latest
+          temperature: 0.2
+      embedding:
+        options:
+          model: nomic-embed-text:latest
+    vectorstore:
+      chroma:
+        client:
+          host: http://localhost
+          port: 8000
+        collection-name: document-rag-knowledge
+        initialize-schema: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+app:
+  storage:
+    upload-dir: ./storage/uploads
+  rag:
+    chunk-size: 450
+    min-chunk-size-chars: 200
+    min-chunk-length-to-embed: 5
+    max-num-chunks: 10000
+    keep-separator: true
+    similarity-threshold: 0.55
+    default-top-k: 5
+    conversation-history-limit: 8
+    system-prompt: >
+      You are a grounded document assistant. Answer strictly from the retrieved document context.
+      If the answer is not supported by the retrieved context, say that the information was not found
+      in the ingested documents and suggest ingesting more relevant material.
+
+logging:
+  level:
+    com.aeon.documentrag.backend: INFO

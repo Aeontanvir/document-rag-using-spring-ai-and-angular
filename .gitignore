@@ -1,0 +1,15 @@
+.DS_Store
+.idea/
+.vscode/
+*.iml
+
+backend/target/
+backend/data/
+backend/storage/
+
+frontend/.angular/
+frontend/dist/
+frontend/node_modules/
+frontend/coverage/
+
+storage/
