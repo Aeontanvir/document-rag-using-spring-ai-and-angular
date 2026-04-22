@@ -1,0 +1,275 @@
+:host {
+  display: block;
+  min-height: 100vh;
+  color: #18233a;
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(20rem, 28rem) minmax(0, 1fr);
+  gap: 1.5rem;
+  min-height: 100vh;
+  padding: 1.5rem;
+  background:
+    radial-gradient(circle at top left, rgba(246, 197, 113, 0.45), transparent 28%),
+    radial-gradient(circle at bottom right, rgba(91, 147, 191, 0.34), transparent 32%),
+    linear-gradient(145deg, #f6efe4 0%, #eef3f8 52%, #f9fbfd 100%);
+  font-family: "Avenir Next", "Segoe UI", sans-serif;
+}
+
+.workspace__sidebar,
+.workspace__main {
+  min-height: calc(100vh - 3rem);
+}
+
+.workspace__sidebar {
+  display: grid;
+  gap: 1rem;
+}
+
+.brand-card,
+.panel,
+.hero,
+.conversation,
+.composer {
+  border: 1px solid rgba(33, 52, 83, 0.08);
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.8);
+  box-shadow: 0 24px 60px rgba(28, 45, 74, 0.08);
+  backdrop-filter: blur(12px);
+}
+
+.brand-card {
+  padding: 1.5rem;
+  background: linear-gradient(160deg, rgba(24, 43, 70, 0.98), rgba(37, 84, 124, 0.92));
+  color: #f9fbfd;
+}
+
+.brand-card h1,
+.hero h2,
+.conversation__welcome h3 {
+  margin: 0;
+  font-family: "Iowan Old Style", "Palatino Linotype", serif;
+  line-height: 1.1;
+}
+
+.brand-card h1 {
+  font-size: clamp(1.8rem, 2vw, 2.5rem);
+}
+
+.brand-card__copy {
+  margin: 1rem 0 0;
+  line-height: 1.65;
+  color: rgba(249, 251, 253, 0.84);
+}
+
+.panel {
+  padding: 1.25rem;
+}
+
+.panel--documents {
+  flex: 1;
+}
+
+.panel__heading,
+.hero {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.panel__heading h2,
+.hero h2 {
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.eyebrow {
+  margin: 0 0 0.4rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #93642d;
+}
+
+.upload-dropzone {
+  display: grid;
+  gap: 0.35rem;
+  padding: 1.2rem;
+  margin-top: 1rem;
+  border: 1px dashed rgba(69, 106, 146, 0.35);
+  border-radius: 22px;
+  background: linear-gradient(180deg, rgba(248, 251, 255, 0.95), rgba(237, 244, 250, 0.95));
+  cursor: pointer;
+}
+
+.upload-dropzone input {
+  display: none;
+}
+
+.upload-dropzone strong {
+  font-size: 1rem;
+}
+
+.upload-dropzone span {
+  color: #5a6d87;
+}
+
+.notice {
+  padding: 0.9rem 1rem;
+  margin: 1rem 0 0;
+  border-radius: 16px;
+  font-size: 0.92rem;
+}
+
+.notice--success {
+  background: rgba(221, 243, 229, 0.9);
+  color: #205b39;
+}
+
+.notice--error {
+  background: rgba(251, 228, 223, 0.95);
+  color: #8a3b2f;
+}
+
+.documents-list {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.empty-state {
+  margin: 1rem 0 0;
+  line-height: 1.65;
+  color: #536884;
+}
+
+.workspace__main {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 1rem;
+}
+
+.hero {
+  padding: 1.4rem 1.5rem;
+}
+
+.hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+.ghost-button,
+.send-button {
+  border: none;
+  border-radius: 999px;
+  padding: 0.85rem 1.25rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ghost-button {
+  background: rgba(229, 236, 245, 0.95);
+  color: #23344f;
+}
+
+.send-button {
+  background: linear-gradient(160deg, #132f52, #25577e);
+  color: #fff;
+}
+
+.send-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.conversation {
+  display: grid;
+  align-content: start;
+  gap: 1rem;
+  overflow: auto;
+  padding: 1.5rem;
+}
+
+.conversation__welcome {
+  place-self: center;
+  max-width: 34rem;
+  text-align: center;
+  color: #314862;
+}
+
+.conversation__welcome p:last-child {
+  margin-bottom: 0;
+  line-height: 1.7;
+}
+
+.composer {
+  display: grid;
+  gap: 0.9rem;
+  padding: 1.25rem 1.35rem;
+}
+
+.composer__label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #4d6786;
+}
+
+.composer textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 8rem;
+  border: 1px solid rgba(42, 67, 102, 0.14);
+  border-radius: 22px;
+  padding: 1rem 1.1rem;
+  font: inherit;
+  color: #16243b;
+  background: rgba(252, 253, 255, 0.95);
+}
+
+.composer__actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.composer__meta {
+  display: grid;
+  gap: 0.2rem;
+  color: #50657f;
+  font-size: 0.92rem;
+}
+
+@media (max-width: 1080px) {
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .workspace__sidebar,
+  .workspace__main {
+    min-height: auto;
+  }
+}
+
+@media (max-width: 720px) {
+  .workspace {
+    padding: 1rem;
+  }
+
+  .hero,
+  .composer__actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .hero__actions {
+    justify-content: stretch;
+  }
+}

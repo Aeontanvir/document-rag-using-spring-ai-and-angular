@@ -1,0 +1,97 @@
+<section class="workspace">
+  <aside class="workspace__sidebar">
+    <div class="brand-card">
+      <p class="eyebrow">Document RAG Workspace</p>
+      <h1>Spring AI + ChromaDB + Angular</h1>
+      <p class="brand-card__copy">
+        Upload knowledge sources, index them with open-source embeddings, then chat against grounded context.
+      </p>
+    </div>
+
+    <section class="panel">
+      <div class="panel__heading">
+        <div>
+          <p class="eyebrow">Ingestion</p>
+          <h2>Upload files</h2>
+        </div>
+        <span>{{ documentCount() }} docs</span>
+      </div>
+
+      <label class="upload-dropzone">
+        <input type="file" multiple (change)="onFilesPicked($event)" />
+        <strong>{{ isUploading() ? 'Indexing...' : 'Pick documents' }}</strong>
+        <span>PDF, DOC, DOCX, TXT, MD, HTML, PPT, PPTX</span>
+      </label>
+
+      @if (uploadNotice()) {
+        <p class="notice notice--success">{{ uploadNotice() }}</p>
+      }
+
+      @if (errorMessage()) {
+        <p class="notice notice--error">{{ errorMessage() }}</p>
+      }
+    </section>
+
+    <section class="panel panel--documents">
+      <div class="panel__heading">
+        <div>
+          <p class="eyebrow">Knowledge base</p>
+          <h2>Indexed documents</h2>
+        </div>
+      </div>
+
+      <div class="documents-list">
+        @for (document of documents(); track trackDocument($index, document)) {
+          <app-document-card [document]="document" (remove)="removeDocument($event)" />
+        } @empty {
+          <p class="empty-state">No documents indexed yet. Upload a few files to start grounding the chat.</p>
+        }
+      </div>
+    </section>
+  </aside>
+
+  <main class="workspace__main">
+    <header class="hero">
+      <div>
+        <p class="eyebrow">Chat console</p>
+        <h2>Grounded Q&A over your documents</h2>
+      </div>
+
+      <div class="hero__actions">
+        <button type="button" class="ghost-button" (click)="resetConversation()">New chat</button>
+        <button type="button" class="ghost-button" (click)="clearServerConversation()">Clear saved chat</button>
+      </div>
+    </header>
+
+    <section class="conversation">
+      @for (message of messages(); track trackMessage($index, message)) {
+        <app-message-bubble [message]="message" />
+      } @empty {
+        <div class="conversation__welcome">
+          <p class="eyebrow">Ready when you are</p>
+          <h3>Ask for summaries, comparisons, quotes, or evidence-based answers.</h3>
+          <p>Every answer is backed by retrieved chunks from ChromaDB and displayed with citations.</p>
+        </div>
+      }
+    </section>
+
+    <footer class="composer">
+      <label class="composer__label" for="prompt">Prompt</label>
+      <textarea
+        id="prompt"
+        [(ngModel)]="draft"
+        rows="4"
+        placeholder="Ask a grounded question about the documents you ingested..."
+      ></textarea>
+      <div class="composer__actions">
+        <div class="composer__meta">
+          <span>Conversation: {{ conversationId() ?? 'new' }}</span>
+          <span>{{ isSending() ? 'Generating answer...' : 'Ready' }}</span>
+        </div>
+        <button type="button" class="send-button" [disabled]="isSending() || !draft.trim()" (click)="sendPrompt()">
+          {{ isSending() ? 'Working...' : 'Send prompt' }}
+        </button>
+      </div>
+    </footer>
+  </main>
+</section>

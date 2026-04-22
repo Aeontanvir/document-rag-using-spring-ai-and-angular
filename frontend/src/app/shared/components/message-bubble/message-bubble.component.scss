@@ -1,0 +1,73 @@
+.message {
+  display: grid;
+  gap: 0.8rem;
+  max-width: min(100%, 54rem);
+  padding: 1.2rem 1.3rem;
+  border-radius: 24px 24px 24px 10px;
+  background: linear-gradient(180deg, rgba(255, 252, 247, 0.98), rgba(244, 235, 219, 0.95));
+  color: #202738;
+  box-shadow: 0 18px 40px rgba(41, 53, 74, 0.1);
+}
+
+.message--assistant {
+  justify-self: end;
+  border-radius: 24px 24px 10px 24px;
+  background: linear-gradient(180deg, rgba(17, 36, 67, 0.98), rgba(24, 56, 92, 0.96));
+  color: #f4f7fb;
+}
+
+.message__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  font-size: 0.78rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.message__body p {
+  margin: 0;
+  white-space: pre-wrap;
+  line-height: 1.65;
+}
+
+.message__citations {
+  padding-top: 0.4rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.message__citations p {
+  margin: 0 0 0.5rem;
+  font-size: 0.76rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.message__citations ul {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.message__citations li {
+  display: grid;
+  gap: 0.3rem;
+  padding: 0.8rem;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.message__citations strong,
+.message__citations span,
+.message__citations small {
+  display: block;
+}
+
+.message__citations small {
+  color: inherit;
+  opacity: 0.86;
+  line-height: 1.5;
+}

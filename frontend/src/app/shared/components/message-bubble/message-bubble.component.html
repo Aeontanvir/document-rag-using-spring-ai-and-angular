@@ -1,0 +1,27 @@
+<article class="message" [class.message--assistant]="message().role === 'ASSISTANT'">
+  <header class="message__header">
+    <span>{{ message().role === 'USER' ? 'You' : 'RAG Assistant' }}</span>
+    <time>{{ formatTime(message().createdAt) }}</time>
+  </header>
+
+  <div class="message__body">
+    <p>{{ message().content }}</p>
+  </div>
+
+  @if (message().citations.length) {
+    <section class="message__citations">
+      <p>Retrieved context</p>
+      <ul>
+        @for (citation of message().citations; track citation.chunkId) {
+          <li>
+            <strong>{{ citation.sourceFileName }}</strong>
+            @if (citation.chunkIndex) {
+              <span>chunk {{ citation.chunkIndex }}</span>
+            }
+            <small>{{ citation.excerpt }}</small>
+          </li>
+        }
+      </ul>
+    </section>
+  }
+</article>

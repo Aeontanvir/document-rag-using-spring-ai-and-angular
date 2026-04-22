@@ -1,0 +1,24 @@
+<article class="document-card">
+  <div class="document-card__header">
+    <div>
+      <p class="document-card__status">{{ document().status }}</p>
+      <h3>{{ document().originalFilename }}</h3>
+    </div>
+    <button type="button" class="document-card__remove" (click)="onRemove()">Delete</button>
+  </div>
+
+  <dl class="document-card__meta">
+    <div>
+      <dt>Chunks</dt>
+      <dd>{{ document().chunkCount }}</dd>
+    </div>
+    <div>
+      <dt>Type</dt>
+      <dd>{{ document().mediaType }}</dd>
+    </div>
+    <div>
+      <dt>Size</dt>
+      <dd>{{ formatSize(document().sizeBytes) }}</dd>
+    </div>
+  </dl>
+</article>
