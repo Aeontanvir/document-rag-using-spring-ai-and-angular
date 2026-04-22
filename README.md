@@ -31,8 +31,8 @@ flowchart LR
 
 More detail:
 
-- High-level architecture: [docs/architecture.md](/Users/aeon/Documents/Workstation/practices/document-rag-using-spring-ai/docs/architecture.md)
-- Low-level design: [docs/low-level-architecture.md](/Users/aeon/Documents/Workstation/practices/document-rag-using-spring-ai/docs/low-level-architecture.md)
+- High-level architecture: [docs/architecture.md](./docs/architecture.md)
+- Low-level design: [docs/low-level-architecture.md](./docs/low-level-architecture.md)
 
 ## Backend stack
 
@@ -107,7 +107,6 @@ ollama pull nomic-embed-text
 ### 1. Start ChromaDB
 
 ```bash
-cd /Users/aeon/Documents/Workstation/practices/document-rag-using-spring-ai
 docker compose -f infra/docker-compose.yml up -d
 ```
 
@@ -122,14 +121,14 @@ If Ollama is already installed as a background service, you can skip that comman
 ### 3. Start the backend
 
 ```bash
-cd /Users/aeon/Documents/Workstation/practices/document-rag-using-spring-ai/backend
+cd backend
 ./mvnw spring-boot:run
 ```
 
 ### 4. Start the frontend
 
 ```bash
-cd /Users/aeon/Documents/Workstation/practices/document-rag-using-spring-ai/frontend
+cd frontend
 npm install
 npm start
 ```
@@ -140,7 +139,7 @@ Frontend URL:
 
 ## Configuration notes
 
-The main backend settings live in [backend/src/main/resources/application.yml](/Users/aeon/Documents/Workstation/practices/document-rag-using-spring-ai/backend/src/main/resources/application.yml).
+The main backend settings live in [backend/src/main/resources/application.yml](./backend/src/main/resources/application.yml).
 
 Important values:
 
@@ -166,14 +165,14 @@ Important values:
 Backend test:
 
 ```bash
-cd /Users/aeon/Documents/Workstation/practices/document-rag-using-spring-ai/backend
+cd backend
 ./mvnw test
 ```
 
 Frontend build:
 
 ```bash
-cd /Users/aeon/Documents/Workstation/practices/document-rag-using-spring-ai/frontend
+cd frontend
 npm run build
 ```
 
