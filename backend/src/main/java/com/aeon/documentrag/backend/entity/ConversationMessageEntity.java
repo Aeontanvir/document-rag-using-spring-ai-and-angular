@@ -13,11 +13,17 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.time.Instant;
 
 @Entity
 @Table(name = "conversation_messages")
+@Getter
+@Setter
+@NoArgsConstructor
 public class ConversationMessageEntity {
 
     @Id
@@ -43,35 +49,4 @@ public class ConversationMessageEntity {
         createdAt = Instant.now();
     }
 
-    public Long getId() {
-        return id;
-    }
-
-    public ConversationEntity getConversation() {
-        return conversation;
-    }
-
-    public void setConversation(ConversationEntity conversation) {
-        this.conversation = conversation;
-    }
-
-    public ConversationRole getRole() {
-        return role;
-    }
-
-    public void setRole(ConversationRole role) {
-        this.role = role;
-    }
-
-    public String getContent() {
-        return content;
-    }
-
-    public void setContent(String content) {
-        this.content = content;
-    }
-
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
 }

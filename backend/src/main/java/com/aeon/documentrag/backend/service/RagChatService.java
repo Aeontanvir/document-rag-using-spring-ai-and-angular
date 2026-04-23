@@ -5,6 +5,7 @@ import com.aeon.documentrag.backend.dto.ChatRequest;
 import com.aeon.documentrag.backend.dto.ChatResponse;
 import com.aeon.documentrag.backend.dto.DocumentCitationResponse;
 import com.aeon.documentrag.backend.entity.type.ConversationRole;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.vectorstore.QuestionAnswerAdvisor;
 import org.springframework.ai.document.Document;
@@ -17,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 
 @Service
+@Slf4j
 public class RagChatService {
 
     private final ChatClient chatClient;
@@ -44,6 +46,7 @@ public class RagChatService {
                 .build();
 
         List<Document> retrievedDocuments = vectorStore.similaritySearch(searchRequest);
+        log.info("Retrieved {} chunks for conversation {}", retrievedDocuments.size(), conversationId);
         String response = chatClient.prompt()
                 .system(ragProperties.systemPrompt())
                 .user(buildUserPrompt(history, request.prompt()))

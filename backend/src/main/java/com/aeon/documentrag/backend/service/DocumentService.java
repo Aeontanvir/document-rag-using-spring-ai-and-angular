@@ -10,6 +10,8 @@ import com.aeon.documentrag.backend.exception.UnsupportedDocumentTypeException;
 import com.aeon.documentrag.backend.mapper.DocumentMapper;
 import com.aeon.documentrag.backend.repository.DocumentRecordRepository;
 import jakarta.transaction.Transactional;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.reader.tika.TikaDocumentReader;
 import org.springframework.ai.vectorstore.VectorStore;
@@ -23,6 +25,8 @@ import java.util.Set;
 import java.util.stream.IntStream;
 
 @Service
+@Slf4j
+@RequiredArgsConstructor
 public class DocumentService {
 
     private static final Set<String> SUPPORTED_EXTENSIONS = Set.of(
@@ -33,16 +37,6 @@ public class DocumentService {
     private final FileStorageService fileStorageService;
     private final DocumentChunkingService documentChunkingService;
     private final VectorStore vectorStore;
-
-    public DocumentService(DocumentRecordRepository documentRecordRepository,
-                           FileStorageService fileStorageService,
-                           DocumentChunkingService documentChunkingService,
-                           VectorStore vectorStore) {
-        this.documentRecordRepository = documentRecordRepository;
-        this.fileStorageService = fileStorageService;
-        this.documentChunkingService = documentChunkingService;
-        this.vectorStore = vectorStore;
-    }
 
     @Transactional
     public UploadBatchResponse ingest(List<MultipartFile> files) {
@@ -114,12 +108,14 @@ public class DocumentService {
             savedRecord.setChunkCount(chunks.size());
             savedRecord.setStatus(DocumentStatus.INDEXED);
             savedRecord.setFailureReason(null);
+            log.info("Indexed document {} into {} chunks", savedRecord.getOriginalFilename(), chunks.size());
             return DocumentMapper.toResponse(documentRecordRepository.save(savedRecord));
         }
         catch (RuntimeException ex) {
             savedRecord.setStatus(DocumentStatus.FAILED);
             savedRecord.setFailureReason(ex.getMessage());
             documentRecordRepository.save(savedRecord);
+            log.warn("Failed to ingest document {}: {}", savedRecord.getOriginalFilename(), ex.getMessage());
             throw ex;
         }
     }

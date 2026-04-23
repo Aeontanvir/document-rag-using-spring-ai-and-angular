@@ -2,6 +2,7 @@ package com.aeon.documentrag.backend.service;
 
 import com.aeon.documentrag.backend.config.StorageProperties;
 import com.aeon.documentrag.backend.exception.DocumentIngestionException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
@@ -16,6 +17,7 @@ import java.util.HexFormat;
 import java.util.UUID;
 
 @Service
+@Slf4j
 public class FileStorageService {
 
     private final Path uploadDirectory;
@@ -38,6 +40,7 @@ public class FileStorageService {
             Path destination = uploadDirectory.resolve(storedFilename);
             byte[] fileBytes = multipartFile.getBytes();
             Files.write(destination, fileBytes);
+            log.debug("Stored uploaded file {} at {}", originalFilename, destination);
             return new StoredFile(
                     originalFilename,
                     storedFilename,

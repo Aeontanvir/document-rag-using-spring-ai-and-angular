@@ -95,6 +95,13 @@ Tracks:
 
 - REST layer, dependency injection, validation, JPA, actuator
 
+### Lombok
+
+- `@RequiredArgsConstructor` for constructor injection in controllers and services
+- `@Getter`, `@Setter`, and `@NoArgsConstructor` to keep JPA entities concise while preserving service-layer construction
+- `@UtilityClass` for mapper helpers
+- `@Slf4j` for lightweight backend diagnostics
+
 ### Spring AI
 
 - `ChatClient` for model interaction

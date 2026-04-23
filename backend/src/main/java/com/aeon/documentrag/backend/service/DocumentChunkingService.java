@@ -1,6 +1,7 @@
 package com.aeon.documentrag.backend.service;
 
 import com.aeon.documentrag.backend.config.RagProperties;
+import lombok.RequiredArgsConstructor;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.transformer.splitter.TokenTextSplitter;
 import org.springframework.stereotype.Service;
@@ -11,13 +12,10 @@ import java.util.Map;
 import java.util.stream.IntStream;
 
 @Service
+@RequiredArgsConstructor
 public class DocumentChunkingService {
 
     private final RagProperties ragProperties;
-
-    public DocumentChunkingService(RagProperties ragProperties) {
-        this.ragProperties = ragProperties;
-    }
 
     public List<Document> chunk(String documentId,
                                 String originalFilename,

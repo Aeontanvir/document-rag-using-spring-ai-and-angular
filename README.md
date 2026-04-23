@@ -5,6 +5,7 @@ Full-stack Retrieval-Augmented Generation (RAG) starter using Spring Boot, Sprin
 ## What is included
 
 - Spring Boot backend with layered structure: `controller`, `service`, `repository`, `entity`, `dto`, `exception`, `config`
+- Lombok-powered constructor injection and reduced backend boilerplate
 - Spring AI RAG flow using `QuestionAnswerAdvisor`
 - ChromaDB vector store integration
 - Ollama chat + embedding model configuration for open-source local models
@@ -39,6 +40,7 @@ More detail:
 - Spring Boot `3.5.11`
 - Spring AI BOM `1.1.4`
 - Springdoc OpenAPI `3.0.3`
+- Lombok for constructor injection, mapper utilities, logging, and JPA boilerplate reduction
 - ChromaDB as the vector database
 - Ollama for local open-source chat and embedding models
 - Apache Tika for document extraction

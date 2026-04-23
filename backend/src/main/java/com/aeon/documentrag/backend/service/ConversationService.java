@@ -9,21 +9,17 @@ import com.aeon.documentrag.backend.mapper.ConversationMapper;
 import com.aeon.documentrag.backend.repository.ConversationMessageRepository;
 import com.aeon.documentrag.backend.repository.ConversationRepository;
 import jakarta.transaction.Transactional;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 
 @Service
+@RequiredArgsConstructor
 public class ConversationService {
 
     private final ConversationRepository conversationRepository;
     private final ConversationMessageRepository conversationMessageRepository;
-
-    public ConversationService(ConversationRepository conversationRepository,
-                               ConversationMessageRepository conversationMessageRepository) {
-        this.conversationRepository = conversationRepository;
-        this.conversationMessageRepository = conversationMessageRepository;
-    }
 
     @Transactional
     public String ensureConversation(String requestedConversationId, String seedPrompt) {

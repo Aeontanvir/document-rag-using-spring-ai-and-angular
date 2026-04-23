@@ -2,11 +2,10 @@ package com.aeon.documentrag.backend.mapper;
 
 import com.aeon.documentrag.backend.dto.DocumentMetadataResponse;
 import com.aeon.documentrag.backend.entity.DocumentRecordEntity;
+import lombok.experimental.UtilityClass;
 
-public final class DocumentMapper {
-
-    private DocumentMapper() {
-    }
+@UtilityClass
+public class DocumentMapper {
 
     public static DocumentMetadataResponse toResponse(DocumentRecordEntity entity) {
         return new DocumentMetadataResponse(

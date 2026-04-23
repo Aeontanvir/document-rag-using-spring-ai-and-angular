@@ -4,13 +4,12 @@ import com.aeon.documentrag.backend.dto.ConversationMessageResponse;
 import com.aeon.documentrag.backend.dto.ConversationResponse;
 import com.aeon.documentrag.backend.entity.ConversationEntity;
 import com.aeon.documentrag.backend.entity.ConversationMessageEntity;
+import lombok.experimental.UtilityClass;
 
 import java.util.List;
 
-public final class ConversationMapper {
-
-    private ConversationMapper() {
-    }
+@UtilityClass
+public class ConversationMapper {
 
     public static ConversationResponse toResponse(ConversationEntity entity, List<ConversationMessageEntity> messages) {
         return new ConversationResponse(

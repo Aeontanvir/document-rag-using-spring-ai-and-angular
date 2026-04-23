@@ -9,12 +9,18 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.time.Instant;
 import java.util.UUID;
 
 @Entity
 @Table(name = "document_records")
+@Getter
+@Setter
+@NoArgsConstructor
 public class DocumentRecordEntity {
 
     @Id
@@ -69,87 +75,4 @@ public class DocumentRecordEntity {
         updatedAt = Instant.now();
     }
 
-    public String getId() {
-        return id;
-    }
-
-    public String getOriginalFilename() {
-        return originalFilename;
-    }
-
-    public void setOriginalFilename(String originalFilename) {
-        this.originalFilename = originalFilename;
-    }
-
-    public String getStoredFilename() {
-        return storedFilename;
-    }
-
-    public void setStoredFilename(String storedFilename) {
-        this.storedFilename = storedFilename;
-    }
-
-    public String getStoragePath() {
-        return storagePath;
-    }
-
-    public void setStoragePath(String storagePath) {
-        this.storagePath = storagePath;
-    }
-
-    public String getMediaType() {
-        return mediaType;
-    }
-
-    public void setMediaType(String mediaType) {
-        this.mediaType = mediaType;
-    }
-
-    public long getSizeBytes() {
-        return sizeBytes;
-    }
-
-    public void setSizeBytes(long sizeBytes) {
-        this.sizeBytes = sizeBytes;
-    }
-
-    public String getChecksum() {
-        return checksum;
-    }
-
-    public void setChecksum(String checksum) {
-        this.checksum = checksum;
-    }
-
-    public int getChunkCount() {
-        return chunkCount;
-    }
-
-    public void setChunkCount(int chunkCount) {
-        this.chunkCount = chunkCount;
-    }
-
-    public DocumentStatus getStatus() {
-        return status;
-    }
-
-    public void setStatus(DocumentStatus status) {
-        this.status = status;
-    }
-
-    public String getFailureReason() {
-        return failureReason;
-    }
-
-    public void setFailureReason(String failureReason) {
-        this.failureReason = failureReason;
-    }
-
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
-
-    public Instant getUpdatedAt() {
-        return updatedAt;
-    }
 }

@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,15 +24,11 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/v1/chat")
 @Tag(name = "Chat", description = "Conversational RAG endpoints")
+@RequiredArgsConstructor
 public class ChatController {
 
     private final RagChatService ragChatService;
     private final ConversationService conversationService;
-
-    public ChatController(RagChatService ragChatService, ConversationService conversationService) {
-        this.ragChatService = ragChatService;
-        this.conversationService = conversationService;
-    }
 
     @PostMapping("/messages")
     @Operation(
