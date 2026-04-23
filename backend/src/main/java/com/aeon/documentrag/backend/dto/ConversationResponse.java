@@ -5,6 +5,8 @@ import java.util.List;
 
 public record ConversationResponse(
         String conversationId,
+        String projectId,
+        String projectName,
         String title,
         Instant createdAt,
         Instant updatedAt,

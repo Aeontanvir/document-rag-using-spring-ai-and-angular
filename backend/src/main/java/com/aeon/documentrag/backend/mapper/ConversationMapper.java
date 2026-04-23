@@ -14,6 +14,8 @@ public class ConversationMapper {
     public static ConversationResponse toResponse(ConversationEntity entity, List<ConversationMessageEntity> messages) {
         return new ConversationResponse(
                 entity.getId(),
+                entity.getProject().getId(),
+                entity.getProject().getName(),
                 entity.getTitle(),
                 entity.getCreatedAt(),
                 entity.getUpdatedAt(),

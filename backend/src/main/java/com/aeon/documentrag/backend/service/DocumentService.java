@@ -3,6 +3,7 @@ package com.aeon.documentrag.backend.service;
 import com.aeon.documentrag.backend.dto.DocumentMetadataResponse;
 import com.aeon.documentrag.backend.dto.UploadBatchResponse;
 import com.aeon.documentrag.backend.entity.DocumentRecordEntity;
+import com.aeon.documentrag.backend.entity.ProjectEntity;
 import com.aeon.documentrag.backend.entity.type.DocumentStatus;
 import com.aeon.documentrag.backend.exception.DocumentIngestionException;
 import com.aeon.documentrag.backend.exception.ResourceNotFoundException;
@@ -37,34 +38,37 @@ public class DocumentService {
     private final FileStorageService fileStorageService;
     private final DocumentChunkingService documentChunkingService;
     private final VectorStore vectorStore;
+    private final ProjectService projectService;
 
     @Transactional
-    public UploadBatchResponse ingest(List<MultipartFile> files) {
+    public UploadBatchResponse ingest(String projectId, List<MultipartFile> files) {
         if (files == null || files.isEmpty()) {
             throw new IllegalArgumentException("At least one file must be uploaded");
         }
+        ProjectEntity project = projectService.getProjectEntity(projectId);
 
         List<DocumentMetadataResponse> uploadedDocuments = files.stream()
-                .map(this::ingestSingle)
+                .map(file -> ingestSingle(project, file))
                 .toList();
 
         return new UploadBatchResponse(uploadedDocuments.size(), uploadedDocuments);
     }
 
-    public List<DocumentMetadataResponse> listDocuments() {
-        return documentRecordRepository.findAllByOrderByCreatedAtDesc()
+    public List<DocumentMetadataResponse> listDocuments(String projectId) {
+        projectService.getProjectEntity(projectId);
+        return documentRecordRepository.findAllByProject_IdOrderByCreatedAtDesc(projectId)
                 .stream()
                 .map(DocumentMapper::toResponse)
                 .toList();
     }
 
-    public DocumentMetadataResponse getDocument(String documentId) {
-        return DocumentMapper.toResponse(findDocument(documentId));
+    public DocumentMetadataResponse getDocument(String projectId, String documentId) {
+        return DocumentMapper.toResponse(findDocument(projectId, documentId));
     }
 
     @Transactional
-    public void deleteDocument(String documentId) {
-        DocumentRecordEntity entity = findDocument(documentId);
+    public void deleteDocument(String projectId, String documentId) {
+        DocumentRecordEntity entity = findDocument(projectId, documentId);
         List<String> chunkIds = IntStream.rangeClosed(1, entity.getChunkCount())
                 .mapToObj(index -> documentChunkingService.buildChunkId(documentId, index))
                 .toList();
@@ -75,11 +79,12 @@ public class DocumentService {
         documentRecordRepository.delete(entity);
     }
 
-    private DocumentMetadataResponse ingestSingle(MultipartFile file) {
+    private DocumentMetadataResponse ingestSingle(ProjectEntity project, MultipartFile file) {
         validateFile(file);
         FileStorageService.StoredFile storedFile = fileStorageService.store(file);
 
         DocumentRecordEntity record = new DocumentRecordEntity();
+        record.setProject(project);
         record.setOriginalFilename(storedFile.originalFilename());
         record.setStoredFilename(storedFile.storedFilename());
         record.setStoragePath(storedFile.path().toString());
@@ -94,6 +99,8 @@ public class DocumentService {
             List<Document> extractedDocuments = new TikaDocumentReader(new FileSystemResource(storedFile.path())).read();
             List<Document> chunks = documentChunkingService.chunk(
                     savedRecord.getId(),
+                    project.getId(),
+                    project.getName(),
                     savedRecord.getOriginalFilename(),
                     savedRecord.getMediaType(),
                     savedRecord.getChecksum(),
@@ -120,9 +127,9 @@ public class DocumentService {
         }
     }
 
-    private DocumentRecordEntity findDocument(String documentId) {
-        return documentRecordRepository.findById(documentId)
-                .orElseThrow(() -> new ResourceNotFoundException("Document not found: " + documentId));
+    private DocumentRecordEntity findDocument(String projectId, String documentId) {
+        return documentRecordRepository.findByIdAndProject_Id(documentId, projectId)
+                .orElseThrow(() -> new ResourceNotFoundException("Document not found in project: " + documentId));
     }
 
     private void validateFile(MultipartFile file) {

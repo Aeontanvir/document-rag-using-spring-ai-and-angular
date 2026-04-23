@@ -18,6 +18,8 @@ public class DocumentChunkingService {
     private final RagProperties ragProperties;
 
     public List<Document> chunk(String documentId,
+                                String projectId,
+                                String projectName,
                                 String originalFilename,
                                 String mediaType,
                                 String checksum,
@@ -33,7 +35,15 @@ public class DocumentChunkingService {
         List<Document> enrichedDocuments = extractedDocuments.stream()
                 .filter(Document::isText)
                 .filter(document -> document.getText() != null && !document.getText().isBlank())
-                .map(document -> new Document(document.getText(), mergeMetadata(document.getMetadata(), documentId, originalFilename, mediaType, checksum)))
+                .map(document -> new Document(document.getText(), mergeMetadata(
+                        document.getMetadata(),
+                        documentId,
+                        projectId,
+                        projectName,
+                        originalFilename,
+                        mediaType,
+                        checksum
+                )))
                 .toList();
 
         List<Document> chunks = splitter.apply(enrichedDocuments);
@@ -55,15 +65,19 @@ public class DocumentChunkingService {
 
     private Map<String, Object> mergeMetadata(Map<String, Object> existingMetadata,
                                               String documentId,
+                                              String projectId,
+                                              String projectName,
                                               String originalFilename,
                                               String mediaType,
                                               String checksum) {
         Map<String, Object> metadata = new HashMap<>();
+        metadata.putAll(existingMetadata);
         metadata.put("documentId", documentId);
+        metadata.put("projectId", projectId);
+        metadata.put("projectName", projectName);
         metadata.put("sourceFileName", originalFilename);
         metadata.put("mediaType", mediaType);
         metadata.put("checksum", checksum);
-        metadata.putAll(existingMetadata);
         return metadata;
     }
 }

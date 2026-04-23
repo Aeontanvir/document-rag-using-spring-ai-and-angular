@@ -22,8 +22,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/v1/chat")
-@Tag(name = "Chat", description = "Conversational RAG endpoints")
+@RequestMapping("/api/v1/projects/{projectId}/chat")
+@Tag(name = "Chat", description = "Project-scoped conversational RAG endpoints")
 @RequiredArgsConstructor
 public class ChatController {
 
@@ -39,20 +39,23 @@ public class ChatController {
                     @ApiResponse(responseCode = "400", description = "Invalid prompt", content = @Content(schema = @Schema(hidden = true)))
             }
     )
-    public ResponseEntity<ChatResponse> sendMessage(@Valid @RequestBody ChatRequest request) {
-        return ResponseEntity.ok(ragChatService.chat(request));
+    public ResponseEntity<ChatResponse> sendMessage(@PathVariable String projectId,
+                                                    @Valid @RequestBody ChatRequest request) {
+        return ResponseEntity.ok(ragChatService.chat(projectId, request));
     }
 
     @GetMapping("/conversations/{conversationId}")
     @Operation(summary = "Get conversation history")
-    public ResponseEntity<ConversationResponse> getConversation(@PathVariable String conversationId) {
-        return ResponseEntity.ok(conversationService.getConversation(conversationId));
+    public ResponseEntity<ConversationResponse> getConversation(@PathVariable String projectId,
+                                                                @PathVariable String conversationId) {
+        return ResponseEntity.ok(conversationService.getConversation(projectId, conversationId));
     }
 
     @DeleteMapping("/conversations/{conversationId}")
     @Operation(summary = "Delete a conversation")
-    public ResponseEntity<Void> deleteConversation(@PathVariable String conversationId) {
-        conversationService.deleteConversation(conversationId);
+    public ResponseEntity<Void> deleteConversation(@PathVariable String projectId,
+                                                   @PathVariable String conversationId) {
+        conversationService.deleteConversation(projectId, conversationId);
         return ResponseEntity.noContent().build();
     }
 }

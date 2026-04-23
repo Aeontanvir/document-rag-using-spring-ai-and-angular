@@ -4,6 +4,7 @@ import com.aeon.documentrag.backend.config.RagProperties;
 import com.aeon.documentrag.backend.dto.ChatRequest;
 import com.aeon.documentrag.backend.dto.ChatResponse;
 import com.aeon.documentrag.backend.dto.DocumentCitationResponse;
+import com.aeon.documentrag.backend.entity.ProjectEntity;
 import com.aeon.documentrag.backend.entity.type.ConversationRole;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
@@ -11,6 +12,7 @@ import org.springframework.ai.chat.client.advisor.vectorstore.QuestionAnswerAdvi
 import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.ai.vectorstore.filter.FilterExpressionBuilder;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -25,24 +27,29 @@ public class RagChatService {
     private final VectorStore vectorStore;
     private final RagProperties ragProperties;
     private final ConversationService conversationService;
+    private final ProjectService projectService;
 
     public RagChatService(ChatClient.Builder chatClientBuilder,
                           VectorStore vectorStore,
                           RagProperties ragProperties,
-                          ConversationService conversationService) {
+                          ConversationService conversationService,
+                          ProjectService projectService) {
         this.chatClient = chatClientBuilder.build();
         this.vectorStore = vectorStore;
         this.ragProperties = ragProperties;
         this.conversationService = conversationService;
+        this.projectService = projectService;
     }
 
-    public ChatResponse chat(ChatRequest request) {
-        String conversationId = conversationService.ensureConversation(request.conversationId(), request.prompt());
+    public ChatResponse chat(String projectId, ChatRequest request) {
+        ProjectEntity project = projectService.getProjectEntity(projectId);
+        String conversationId = conversationService.ensureConversation(request.conversationId(), project, request.prompt());
         String history = conversationService.renderConversationHistory(conversationId, ragProperties.conversationHistoryLimit());
         SearchRequest searchRequest = SearchRequest.builder()
                 .query(request.prompt())
                 .topK(request.topK() == null ? ragProperties.defaultTopK() : request.topK())
                 .similarityThreshold(ragProperties.similarityThreshold())
+                .filterExpression(new FilterExpressionBuilder().eq("projectId", projectId).build())
                 .build();
 
         List<Document> retrievedDocuments = vectorStore.similaritySearch(searchRequest);
@@ -61,6 +68,7 @@ public class RagChatService {
 
         return new ChatResponse(
                 conversationId,
+                projectId,
                 response,
                 retrievedDocuments.stream().map(this::toCitation).toList(),
                 Instant.now()
@@ -82,6 +90,7 @@ public class RagChatService {
         Map<String, Object> metadata = document.getMetadata();
         return new DocumentCitationResponse(
                 document.getId(),
+                metadata.getOrDefault("projectId", "").toString(),
                 metadata.getOrDefault("documentId", "").toString(),
                 metadata.getOrDefault("sourceFileName", "Unknown").toString(),
                 metadata.containsKey("chunkIndex") ? Integer.parseInt(metadata.get("chunkIndex").toString()) : null,

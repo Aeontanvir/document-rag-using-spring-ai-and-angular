@@ -3,6 +3,7 @@ package com.aeon.documentrag.backend.service;
 import com.aeon.documentrag.backend.dto.ConversationResponse;
 import com.aeon.documentrag.backend.entity.ConversationEntity;
 import com.aeon.documentrag.backend.entity.ConversationMessageEntity;
+import com.aeon.documentrag.backend.entity.ProjectEntity;
 import com.aeon.documentrag.backend.entity.type.ConversationRole;
 import com.aeon.documentrag.backend.exception.ResourceNotFoundException;
 import com.aeon.documentrag.backend.mapper.ConversationMapper;
@@ -22,15 +23,16 @@ public class ConversationService {
     private final ConversationMessageRepository conversationMessageRepository;
 
     @Transactional
-    public String ensureConversation(String requestedConversationId, String seedPrompt) {
+    public String ensureConversation(String requestedConversationId, ProjectEntity project, String seedPrompt) {
         if (requestedConversationId != null && !requestedConversationId.isBlank()) {
-            return conversationRepository.findById(requestedConversationId)
+            return conversationRepository.findByIdAndProject_Id(requestedConversationId, project.getId())
                     .map(ConversationEntity::getId)
                     .orElseThrow(() -> new ResourceNotFoundException("Conversation not found: " + requestedConversationId));
         }
 
         ConversationEntity conversation = new ConversationEntity();
         conversation.setTitle(buildTitle(seedPrompt));
+        conversation.setProject(project);
         return conversationRepository.save(conversation).getId();
     }
 
@@ -56,18 +58,23 @@ public class ConversationService {
                 .orElse("");
     }
 
-    public ConversationResponse getConversation(String conversationId) {
-        ConversationEntity conversation = getConversationEntity(conversationId);
+    public ConversationResponse getConversation(String projectId, String conversationId) {
+        ConversationEntity conversation = getConversationEntity(projectId, conversationId);
         List<ConversationMessageEntity> messages = conversationMessageRepository.findByConversation_IdOrderByCreatedAtAsc(conversationId);
         return ConversationMapper.toResponse(conversation, messages);
     }
 
     @Transactional
-    public void deleteConversation(String conversationId) {
-        getConversationEntity(conversationId);
+    public void deleteConversation(String projectId, String conversationId) {
+        getConversationEntity(projectId, conversationId);
         conversationMessageRepository.deleteByConversation_Id(conversationId);
-        ConversationEntity conversation = getConversationEntity(conversationId);
+        ConversationEntity conversation = getConversationEntity(projectId, conversationId);
         conversationRepository.delete(conversation);
+    }
+
+    private ConversationEntity getConversationEntity(String projectId, String conversationId) {
+        return conversationRepository.findByIdAndProject_Id(conversationId, projectId)
+                .orElseThrow(() -> new ResourceNotFoundException("Conversation not found in project: " + conversationId));
     }
 
     private ConversationEntity getConversationEntity(String conversationId) {

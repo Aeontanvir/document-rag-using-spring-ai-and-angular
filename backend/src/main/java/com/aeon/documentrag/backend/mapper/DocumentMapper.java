@@ -10,6 +10,8 @@ public class DocumentMapper {
     public static DocumentMetadataResponse toResponse(DocumentRecordEntity entity) {
         return new DocumentMetadataResponse(
                 entity.getId(),
+                entity.getProject().getId(),
+                entity.getProject().getName(),
                 entity.getOriginalFilename(),
                 entity.getMediaType(),
                 entity.getSizeBytes(),

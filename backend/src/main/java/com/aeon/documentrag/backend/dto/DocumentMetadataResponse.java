@@ -4,6 +4,8 @@ import java.time.Instant;
 
 public record DocumentMetadataResponse(
         String id,
+        String projectId,
+        String projectName,
         String originalFilename,
         String mediaType,
         long sizeBytes,

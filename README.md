@@ -1,6 +1,6 @@
 # document-rag-using-spring-ai-and-angular
 
-Full-stack Retrieval-Augmented Generation (RAG) starter using Spring Boot, Spring AI, Ollama, ChromaDB, Apache Tika, and Angular. The backend ingests PDF/Word/text-style documents, chunks content with an open-source token-aware splitter, stores embeddings in ChromaDB, and exposes documented REST APIs. The frontend provides a chat-style UI for uploading files and querying the indexed knowledge base.
+Full-stack Retrieval-Augmented Generation (RAG) starter using Spring Boot, Spring AI, Ollama, ChromaDB, Apache Tika, and Angular. The backend lets users create projects, ingest PDF/Word/text-style documents into a chosen project, chunk and embed them into ChromaDB, and chat only against that project's knowledge base. The frontend provides a project-aware chat UI for project creation, upload, and scoped retrieval.
 
 ## What is included
 
@@ -8,6 +8,7 @@ Full-stack Retrieval-Augmented Generation (RAG) starter using Spring Boot, Sprin
 - Lombok-powered constructor injection and reduced backend boilerplate
 - Spring AI RAG flow using `QuestionAnswerAdvisor`
 - ChromaDB vector store integration
+- Project-scoped RAG so each project's documents, conversations, and retrieval stay isolated
 - Ollama chat + embedding model configuration for open-source local models
 - Apache Tika-based document ingestion for `pdf`, `doc`, `docx`, `txt`, `md`, `html`, `ppt`, `pptx`
 - Token-aware chunking with Spring AI `TokenTextSplitter`
@@ -20,6 +21,7 @@ Full-stack Retrieval-Augmented Generation (RAG) starter using Spring Boot, Sprin
 ```mermaid
 flowchart LR
     A["Angular UI"] --> B["Spring Boot REST API"]
+    B --> P["Project Service"]
     B --> C["Document Service"]
     C --> D["Apache Tika Reader"]
     D --> E["TokenTextSplitter"]
@@ -41,16 +43,18 @@ Provide a local-first, open-source-friendly RAG application where users can inge
 #### Frontend
 
 - Angular standalone application
+- Project creation and selection workflow
 - Chat workspace for prompt entry and response rendering
-- Upload flow for ingestion
-- Document list for indexed sources
+- Upload flow for project-specific ingestion
+- Document list for the selected project
 
 #### Backend
 
 - Spring Boot REST API
+- Project management API
 - Spring AI orchestration for retrieval + generation
 - Apache Tika extraction pipeline
-- H2 persistence for metadata and conversation history
+- H2 persistence for project, document, and conversation metadata
 
 #### External runtime services
 
@@ -72,7 +76,7 @@ sequenceDiagram
     participant Chroma as ChromaDB
     participant H2 as H2 Metadata
 
-    UI->>API: POST /api/v1/documents/ingest
+    UI->>API: POST /api/v1/projects/{projectId}/documents/ingest
     API->>Service: ingest(files)
     Service->>Store: persist file
     Service->>H2: save document record (INDEXING)
@@ -94,7 +98,7 @@ sequenceDiagram
     participant Ollama as Ollama
     participant H2 as H2 Conversations
 
-    UI->>API: POST /api/v1/chat/messages
+    UI->>API: POST /api/v1/projects/{projectId}/chat/messages
     API->>Rag: chat(prompt, conversationId)
     Rag->>H2: fetch prior conversation
     Rag->>Chroma: similarity search
@@ -124,6 +128,7 @@ sequenceDiagram
 #### Why H2 plus ChromaDB
 
 - H2 stores operational metadata: upload status, filenames, checksums, and conversation history.
+- H2 also stores project ownership so retrieval and chat stay project-specific.
 - ChromaDB stores chunk embeddings and supports similarity search.
 - Separating operational persistence from vector persistence keeps responsibilities clear.
 
@@ -155,19 +160,26 @@ com.aeon.documentrag.backend
 
 #### `DocumentController`
 
-- Accepts multipart uploads
-- Lists document records
-- Deletes document records and vector chunks
+- Accepts multipart uploads into a selected project
+- Lists document records for a selected project
+- Deletes project-scoped document records and vector chunks
+
+#### `ProjectController`
+
+- Creates project workspaces
+- Lists available projects
+- Deletes a project with its knowledge base and conversation history
 
 #### `ChatController`
 
-- Accepts chat prompts
+- Accepts project-scoped chat prompts
 - Returns generated answer plus citations
-- Exposes conversation read/delete endpoints
+- Exposes project-scoped conversation read/delete endpoints
 
 #### `DocumentService`
 
 - Validates file types
+- Resolves project ownership
 - Stores uploaded files
 - Runs Tika extraction
 - Calls chunking service
@@ -183,23 +195,38 @@ com.aeon.documentrag.backend
 #### `RagChatService`
 
 - Builds a `SearchRequest`
-- Retrieves similar chunks from ChromaDB
+- Retrieves similar chunks from ChromaDB with a `projectId` filter
 - Calls Spring AI `QuestionAnswerAdvisor`
 - Persists user and assistant messages
 - Returns citations for transparency
 
 #### `ConversationService`
 
-- Creates or validates conversation IDs
+- Creates or validates project-owned conversation IDs
 - Persists messages
 - Renders bounded conversation history for prompting
 
+#### `ProjectService`
+
+- Creates and loads project metadata
+- Computes per-project document and conversation counts
+- Deletes project resources, stored files, and vector chunks
+
 ### Persistence model
+
+#### `ProjectEntity`
+
+Tracks:
+
+- project identity
+- project name and description
+- creation/update timestamps
 
 #### `DocumentRecordEntity`
 
 Tracks:
 
+- owning project
 - upload identity
 - source filename
 - local storage path
@@ -212,6 +239,7 @@ Tracks:
 
 Tracks:
 
+- owning project
 - conversation identity
 - derived title
 - creation/update timestamps
@@ -262,7 +290,22 @@ Tracks:
 
 ### Endpoint detail
 
-#### `POST /api/v1/documents/ingest`
+#### `POST /api/v1/projects`
+
+Request JSON:
+
+```json
+{
+  "name": "Vendor Contracts",
+  "description": "All supplier agreements and pricing attachments"
+}
+```
+
+Response:
+
+- created project metadata with document and conversation counts
+
+#### `POST /api/v1/projects/{projectId}/documents/ingest`
 
 Request:
 
@@ -272,23 +315,23 @@ Request:
 Response:
 
 - upload count
-- indexed document metadata list
+- indexed document metadata list for the selected project
 
-#### `GET /api/v1/documents`
+#### `GET /api/v1/projects/{projectId}/documents`
 
 Response:
 
-- all document metadata records ordered by newest first
+- all document metadata records for that project ordered by newest first
 
-#### `DELETE /api/v1/documents/{documentId}`
+#### `DELETE /api/v1/projects/{projectId}/documents/{documentId}`
 
 Behavior:
 
 - deletes chunk IDs from ChromaDB
 - deletes local stored file
-- deletes H2 metadata record
+- deletes H2 metadata record only for the selected project
 
-#### `POST /api/v1/chat/messages`
+#### `POST /api/v1/projects/{projectId}/chat/messages`
 
 Request JSON:
 
@@ -305,10 +348,12 @@ Response JSON:
 ```json
 {
   "conversationId": "uuid",
+  "projectId": "project-1",
   "answer": "Grounded answer...",
   "citations": [
     {
       "chunkId": "doc-1-chunk-1",
+      "projectId": "project-1",
       "documentId": "doc-1",
       "sourceFileName": "policy.pdf",
       "chunkIndex": 1,
@@ -372,23 +417,36 @@ Swagger UI:
 
 Main endpoints:
 
-- `POST /api/v1/documents/ingest` uploads and indexes files
-- `GET /api/v1/documents` lists indexed documents
-- `GET /api/v1/documents/{documentId}` fetches one document record
-- `DELETE /api/v1/documents/{documentId}` removes file metadata and vector chunks
-- `POST /api/v1/chat/messages` runs grounded chat over ChromaDB
-- `GET /api/v1/chat/conversations/{conversationId}` reads saved conversation history
-- `DELETE /api/v1/chat/conversations/{conversationId}` deletes a saved conversation
+- `POST /api/v1/projects` creates a project
+- `GET /api/v1/projects` lists projects
+- `GET /api/v1/projects/{projectId}` fetches project details
+- `DELETE /api/v1/projects/{projectId}` deletes a project with its indexed data
+- `POST /api/v1/projects/{projectId}/documents/ingest` uploads and indexes files for one project
+- `GET /api/v1/projects/{projectId}/documents` lists indexed documents for one project
+- `GET /api/v1/projects/{projectId}/documents/{documentId}` fetches one project document record
+- `DELETE /api/v1/projects/{projectId}/documents/{documentId}` removes project file metadata and vector chunks
+- `POST /api/v1/projects/{projectId}/chat/messages` runs grounded chat only against that project's ChromaDB chunks
+- `GET /api/v1/projects/{projectId}/chat/conversations/{conversationId}` reads saved conversation history for one project
+- `DELETE /api/v1/projects/{projectId}/chat/conversations/{conversationId}` deletes a saved conversation for one project
+
+## Project workflow
+
+1. Create a project in the Angular UI or via `POST /api/v1/projects`.
+2. Select that project as the active workspace.
+3. Upload documents into the selected project.
+4. Ask questions in chat.
+5. Retrieval is filtered by `projectId`, so the assistant only searches and learns from the selected project's indexed chunks.
 
 ## How ingestion works
 
-1. A file is uploaded through the REST API or Angular UI.
-2. Spring stores the file locally.
-3. Apache Tika extracts text from the source document.
-4. Spring AI `TokenTextSplitter` breaks text into semantic-friendly chunks.
-5. Each chunk is annotated with metadata such as `documentId`, filename, checksum, and chunk index.
-6. Chunks are embedded through Ollama and stored in ChromaDB.
-7. The chat endpoint retrieves similar chunks and sends them to the model through a RAG advisor.
+1. A project is created and selected.
+2. A file is uploaded into that project through the REST API or Angular UI.
+3. Spring stores the file locally.
+4. Apache Tika extracts text from the source document.
+5. Spring AI `TokenTextSplitter` breaks text into semantic-friendly chunks.
+6. Each chunk is annotated with metadata such as `projectId`, `documentId`, filename, checksum, and chunk index.
+7. Chunks are embedded through Ollama and stored in ChromaDB.
+8. The chat endpoint retrieves only chunks whose metadata matches the selected `projectId` and sends them to the model through a RAG advisor.
 
 ## Prerequisites
 
@@ -439,6 +497,12 @@ Frontend URL:
 
 - [http://localhost:4200](http://localhost:4200)
 
+After the app opens:
+
+1. Create a project.
+2. Upload documents into that project.
+3. Chat against the selected project's indexed knowledge base.
+
 ## Configuration notes
 
 The main backend settings live in [backend/src/main/resources/application.yml](./backend/src/main/resources/application.yml).
@@ -457,9 +521,12 @@ Important values:
 ## Frontend features
 
 - Multi-file upload
+- Project creation and selection
+- Project-specific document catalog
 - Indexed document catalog
 - Chat conversation panel
 - Retrieved context citations shown with assistant answers
+- Project-scoped retrieval and chat isolation
 - Proxy configuration for local backend access during development
 
 ## Useful commands
@@ -481,5 +548,6 @@ ng build
 ## Notes
 
 - ChromaDB and Ollama are external runtime dependencies and must be reachable for real RAG requests.
-- The backend stores document metadata and chat history in local H2 files for easy local development.
+- The backend stores project metadata, document metadata, and chat history in local H2 files for easy local development.
 - Uploaded files are stored on disk and ignored by git.
+- If you already have old local H2 data from the pre-project version, remove `backend/data` before restarting so the new project-scoped schema starts cleanly.

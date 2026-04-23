@@ -2,8 +2,6 @@ package com.aeon.documentrag.backend.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
@@ -16,21 +14,20 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "conversations")
+@Table(name = "projects")
 @Getter
 @Setter
 @NoArgsConstructor
-public class ConversationEntity {
+public class ProjectEntity {
 
     @Id
     private String id;
 
-    @Column(nullable = false, length = 200)
-    private String title;
+    @Column(nullable = false, length = 150)
+    private String name;
 
-    @ManyToOne(optional = false)
-    @JoinColumn(name = "project_id", nullable = false)
-    private ProjectEntity project;
+    @Column(length = 2000)
+    private String description;
 
     @Column(nullable = false)
     private Instant createdAt;
@@ -51,9 +48,5 @@ public class ConversationEntity {
     @PreUpdate
     void preUpdate() {
         updatedAt = Instant.now();
-    }
-
-    public void touch() {
-        this.updatedAt = Instant.now();
     }
 }

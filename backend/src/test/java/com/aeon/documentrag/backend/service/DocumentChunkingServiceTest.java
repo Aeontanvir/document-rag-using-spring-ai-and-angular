@@ -27,6 +27,8 @@ class DocumentChunkingServiceTest {
 
         List<Document> chunks = service.chunk(
                 "doc-123",
+                "project-456",
+                "Knowledge Hub",
                 "sample.txt",
                 "text/plain",
                 "abc123",
@@ -36,6 +38,8 @@ class DocumentChunkingServiceTest {
         assertThat(chunks).isNotEmpty();
         assertThat(chunks.getFirst().getMetadata())
                 .containsEntry("documentId", "doc-123")
+                .containsEntry("projectId", "project-456")
+                .containsEntry("projectName", "Knowledge Hub")
                 .containsEntry("sourceFileName", "sample.txt")
                 .containsEntry("checksum", "abc123")
                 .containsKey("chunkIndex");
