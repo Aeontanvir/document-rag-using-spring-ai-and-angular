@@ -6,17 +6,20 @@ import { ChatRequest, ChatResponse, ConversationResponse } from '../models/api.m
 @Injectable({ providedIn: 'root' })
 export class ChatApiService {
   private readonly http = inject(HttpClient);
-  private readonly baseUrl = '/api/v1/chat';
 
-  sendMessage(payload: ChatRequest): Observable<ChatResponse> {
-    return this.http.post<ChatResponse>(`${this.baseUrl}/messages`, payload);
+  sendMessage(projectId: string, payload: ChatRequest): Observable<ChatResponse> {
+    return this.http.post<ChatResponse>(`${this.baseUrl(projectId)}/messages`, payload);
   }
 
-  getConversation(conversationId: string): Observable<ConversationResponse> {
-    return this.http.get<ConversationResponse>(`${this.baseUrl}/conversations/${conversationId}`);
+  getConversation(projectId: string, conversationId: string): Observable<ConversationResponse> {
+    return this.http.get<ConversationResponse>(`${this.baseUrl(projectId)}/conversations/${conversationId}`);
   }
 
-  deleteConversation(conversationId: string): Observable<void> {
-    return this.http.delete<void>(`${this.baseUrl}/conversations/${conversationId}`);
+  deleteConversation(projectId: string, conversationId: string): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl(projectId)}/conversations/${conversationId}`);
+  }
+
+  private baseUrl(projectId: string): string {
+    return `/api/v1/projects/${projectId}/chat`;
   }
 }

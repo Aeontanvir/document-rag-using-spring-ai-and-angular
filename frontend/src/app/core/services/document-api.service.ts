@@ -6,21 +6,24 @@ import { DocumentMetadata, UploadBatchResponse } from '../models/api.models';
 @Injectable({ providedIn: 'root' })
 export class DocumentApiService {
   private readonly http = inject(HttpClient);
-  private readonly baseUrl = '/api/v1/documents';
 
-  listDocuments(): Observable<DocumentMetadata[]> {
-    return this.http.get<DocumentMetadata[]>(this.baseUrl);
+  listDocuments(projectId: string): Observable<DocumentMetadata[]> {
+    return this.http.get<DocumentMetadata[]>(this.baseUrl(projectId));
   }
 
-  uploadDocuments(files: File[]): Observable<UploadBatchResponse> {
+  uploadDocuments(projectId: string, files: File[]): Observable<UploadBatchResponse> {
     const formData = new FormData();
     for (const file of files) {
       formData.append('files', file, file.name);
     }
-    return this.http.post<UploadBatchResponse>(`${this.baseUrl}/ingest`, formData);
+    return this.http.post<UploadBatchResponse>(`${this.baseUrl(projectId)}/ingest`, formData);
   }
 
-  deleteDocument(documentId: string): Observable<void> {
-    return this.http.delete<void>(`${this.baseUrl}/${documentId}`);
+  deleteDocument(projectId: string, documentId: string): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl(projectId)}/${documentId}`);
+  }
+
+  private baseUrl(projectId: string): string {
+    return `/api/v1/projects/${projectId}/documents`;
   }
 }

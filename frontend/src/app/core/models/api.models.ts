@@ -1,3 +1,18 @@
+export interface ProjectCreateRequest {
+  name: string;
+  description?: string;
+}
+
+export interface ProjectSummary {
+  id: string;
+  name: string;
+  description: string | null;
+  documentCount: number;
+  conversationCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface ChatRequest {
   conversationId?: string;
   prompt: string;
@@ -6,6 +21,7 @@ export interface ChatRequest {
 
 export interface DocumentCitation {
   chunkId: string;
+  projectId: string;
   documentId: string;
   sourceFileName: string;
   chunkIndex: number | null;
@@ -14,6 +30,7 @@ export interface DocumentCitation {
 
 export interface ChatResponse {
   conversationId: string;
+  projectId: string;
   answer: string;
   citations: DocumentCitation[];
   respondedAt: string;
@@ -28,6 +45,8 @@ export interface ConversationMessage {
 
 export interface ConversationResponse {
   conversationId: string;
+  projectId: string;
+  projectName: string;
   title: string;
   createdAt: string;
   updatedAt: string;
@@ -36,6 +55,8 @@ export interface ConversationResponse {
 
 export interface DocumentMetadata {
   id: string;
+  projectId: string;
+  projectName: string;
   originalFilename: string;
   mediaType: string;
   sizeBytes: number;

@@ -1,26 +1,87 @@
 <section class="workspace">
   <aside class="workspace__sidebar">
     <div class="brand-card">
-      <p class="eyebrow">Document RAG Workspace</p>
+      <p class="eyebrow">Project RAG Workspace</p>
       <h1>Spring AI + ChromaDB + Angular</h1>
       <p class="brand-card__copy">
-        Upload knowledge sources, index them with open-source embeddings, then chat against grounded context.
+        Create projects, upload files into each project, and keep retrieval, learning, and chat isolated by project.
       </p>
     </div>
 
     <section class="panel">
       <div class="panel__heading">
         <div>
+          <p class="eyebrow">Projects</p>
+          <h2>Create and select</h2>
+        </div>
+        <span>{{ projectCount() }} total</span>
+      </div>
+
+      <div class="project-form">
+        <input
+          type="text"
+          [(ngModel)]="projectNameDraft"
+          placeholder="Project name"
+          aria-label="Project name"
+        />
+        <textarea
+          [(ngModel)]="projectDescriptionDraft"
+          rows="3"
+          placeholder="Short description for this project"
+          aria-label="Project description"
+        ></textarea>
+        <button type="button" class="send-button" [disabled]="isCreatingProject()" (click)="createProject()">
+          {{ isCreatingProject() ? 'Creating...' : 'Create project' }}
+        </button>
+      </div>
+
+      <div class="project-list">
+        @for (project of projects(); track trackProject($index, project)) {
+          <button
+            type="button"
+            class="project-chip"
+            [class.project-chip--active]="project.id === selectedProjectId()"
+            (click)="selectProject(project.id)"
+          >
+            <strong>{{ project.name }}</strong>
+            <span>{{ project.documentCount }} docs · {{ project.conversationCount }} chats</span>
+            @if (project.description) {
+              <small>{{ project.description }}</small>
+            }
+          </button>
+        } @empty {
+          <p class="empty-state">No projects yet. Create one first so uploads and chat stay project-scoped.</p>
+        }
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel__heading">
+        <div>
           <p class="eyebrow">Ingestion</p>
-          <h2>Upload files</h2>
+          <h2>Upload into project</h2>
         </div>
         <span>{{ documentCount() }} docs</span>
       </div>
 
-      <label class="upload-dropzone">
-        <input type="file" multiple (change)="onFilesPicked($event)" />
-        <strong>{{ isUploading() ? 'Indexing...' : 'Pick documents' }}</strong>
-        <span>PDF, DOC, DOCX, TXT, MD, HTML, PPT, PPTX</span>
+      <label class="upload-dropzone" [class.upload-dropzone--disabled]="!selectedProject()">
+        <input type="file" multiple [disabled]="!selectedProject()" (change)="onFilesPicked($event)" />
+        <strong>
+          {{
+            !selectedProject()
+              ? 'Create or select a project'
+              : isUploading()
+                ? 'Indexing into project...'
+                : 'Pick documents for this project'
+          }}
+        </strong>
+        <span>
+          @if (selectedProject()) {
+            Files will be stored in <strong>{{ selectedProject()?.name }}</strong> only.
+          } @else {
+            PDF, DOC, DOCX, TXT, MD, HTML, PPT, PPTX
+          }
+        </span>
       </label>
 
       @if (uploadNotice()) {
@@ -36,7 +97,7 @@
       <div class="panel__heading">
         <div>
           <p class="eyebrow">Knowledge base</p>
-          <h2>Indexed documents</h2>
+          <h2>{{ selectedProject()?.name ?? 'No project selected' }}</h2>
         </div>
       </div>
 
@@ -44,7 +105,13 @@
         @for (document of documents(); track trackDocument($index, document)) {
           <app-document-card [document]="document" (remove)="removeDocument($event)" />
         } @empty {
-          <p class="empty-state">No documents indexed yet. Upload a few files to start grounding the chat.</p>
+          <p class="empty-state">
+            @if (selectedProject()) {
+              No documents indexed for this project yet.
+            } @else {
+              Select a project to see its documents.
+            }
+          </p>
         }
       </div>
     </section>
@@ -54,12 +121,28 @@
     <header class="hero">
       <div>
         <p class="eyebrow">Chat console</p>
-        <h2>Grounded Q&A over your documents</h2>
+        <h2>
+          @if (selectedProject()) {
+            Grounded Q&A for {{ selectedProject()?.name }}
+          } @else {
+            Start by creating a project workspace
+          }
+        </h2>
       </div>
 
       <div class="hero__actions">
         <button type="button" class="ghost-button" (click)="resetConversation()">New chat</button>
-        <button type="button" class="ghost-button" (click)="clearServerConversation()">Clear saved chat</button>
+        <button type="button" class="ghost-button" [disabled]="!conversationId()" (click)="clearServerConversation()">
+          Clear saved chat
+        </button>
+        <button
+          type="button"
+          class="ghost-button ghost-button--danger"
+          [disabled]="!selectedProject() || isDeletingProject()"
+          (click)="deleteProject()"
+        >
+          {{ isDeletingProject() ? 'Deleting...' : 'Delete project' }}
+        </button>
       </div>
     </header>
 
@@ -68,9 +151,15 @@
         <app-message-bubble [message]="message" />
       } @empty {
         <div class="conversation__welcome">
-          <p class="eyebrow">Ready when you are</p>
-          <h3>Ask for summaries, comparisons, quotes, or evidence-based answers.</h3>
-          <p>Every answer is backed by retrieved chunks from ChromaDB and displayed with citations.</p>
+          <p class="eyebrow">Project scoped retrieval</p>
+          <h3>
+            @if (selectedProject()) {
+              Ask questions and retrieve answers only from {{ selectedProject()?.name }}.
+            } @else {
+              Create a project, upload files, and keep each RAG knowledge base isolated.
+            }
+          </h3>
+          <p>Every answer is grounded only in the currently selected project's retrieved chunks.</p>
         </div>
       }
     </section>
@@ -81,14 +170,21 @@
         id="prompt"
         [(ngModel)]="draft"
         rows="4"
-        placeholder="Ask a grounded question about the documents you ingested..."
+        [disabled]="!selectedProject()"
+        placeholder="Ask a grounded question about the selected project's documents..."
       ></textarea>
       <div class="composer__actions">
         <div class="composer__meta">
+          <span>Project: {{ selectedProject()?.name ?? 'none selected' }}</span>
           <span>Conversation: {{ conversationId() ?? 'new' }}</span>
-          <span>{{ isSending() ? 'Generating answer...' : 'Ready' }}</span>
+          <span>{{ isSending() ? 'Generating project answer...' : 'Ready' }}</span>
         </div>
-        <button type="button" class="send-button" [disabled]="isSending() || !draft.trim()" (click)="sendPrompt()">
+        <button
+          type="button"
+          class="send-button"
+          [disabled]="isSending() || !draft.trim() || !selectedProject()"
+          (click)="sendPrompt()"
+        >
           {{ isSending() ? 'Working...' : 'Send prompt' }}
         </button>
       </div>
