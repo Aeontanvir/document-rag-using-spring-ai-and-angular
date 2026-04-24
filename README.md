@@ -1,6 +1,6 @@
 # document-rag-using-spring-ai-and-angular
 
-Full-stack Retrieval-Augmented Generation (RAG) starter using Spring Boot, Spring AI, Ollama, ChromaDB, Apache Tika, and Angular. The backend lets users create projects, ingest PDF/Word/text-style documents into a chosen project, chunk and embed them into ChromaDB, and chat only against that project's knowledge base. The frontend provides a project-aware chat UI for project creation, upload, and scoped retrieval.
+Full-stack Retrieval-Augmented Generation (RAG) starter using Spring Boot, Spring AI, Ollama, ChromaDB, Apache Tika, and Angular. Users can register, log in, create their own projects, upload PDF/Word/text-style documents into a selected project, and chat only against that project's knowledge base. The frontend now includes a user-authenticated workspace with project creation, upload, and scoped retrieval.
 
 ## What is included
 
@@ -8,7 +8,9 @@ Full-stack Retrieval-Augmented Generation (RAG) starter using Spring Boot, Sprin
 - Lombok-powered constructor injection and reduced backend boilerplate
 - Spring AI RAG flow using `QuestionAnswerAdvisor`
 - ChromaDB vector store integration
+- User registration, login, logout, and token-based API authentication
 - Project-scoped RAG so each project's documents, conversations, and retrieval stay isolated
+- User-scoped ownership so one user only sees their own projects, documents, and chats
 - Ollama chat + embedding model configuration for open-source local models
 - Apache Tika-based document ingestion for `pdf`, `doc`, `docx`, `txt`, `md`, `html`, `ppt`, `pptx`
 - Token-aware chunking with Spring AI `TokenTextSplitter`
@@ -21,6 +23,9 @@ Full-stack Retrieval-Augmented Generation (RAG) starter using Spring Boot, Sprin
 ```mermaid
 flowchart LR
     A["Angular UI"] --> B["Spring Boot REST API"]
+    A --> S["Auth UI + Session State"]
+    B --> AU["Auth Service"]
+    AU --> I["H2 Metadata Store"]
     B --> P["Project Service"]
     B --> C["Document Service"]
     C --> D["Apache Tika Reader"]
@@ -29,7 +34,8 @@ flowchart LR
     B --> G["RAG Chat Service"]
     G --> F
     G --> H["Ollama Chat + Embeddings"]
-    B --> I["H2 Metadata Store"]
+    P --> I
+    G --> I
 ```
 
 ## Architecture Overview
@@ -43,6 +49,7 @@ Provide a local-first, open-source-friendly RAG application where users can inge
 #### Frontend
 
 - Angular standalone application
+- Register / login experience with persisted session token
 - Project creation and selection workflow
 - Chat workspace for prompt entry and response rendering
 - Upload flow for project-specific ingestion
@@ -51,10 +58,11 @@ Provide a local-first, open-source-friendly RAG application where users can inge
 #### Backend
 
 - Spring Boot REST API
+- Stateless token authentication with Spring Security
 - Project management API
 - Spring AI orchestration for retrieval + generation
 - Apache Tika extraction pipeline
-- H2 persistence for project, document, and conversation metadata
+- H2 persistence for user, auth token, project, document, and conversation metadata
 
 #### External runtime services
 
@@ -62,6 +70,23 @@ Provide a local-first, open-source-friendly RAG application where users can inge
 - ChromaDB for vector persistence and similarity search
 
 ### Request flows
+
+#### Authentication flow
+
+```mermaid
+sequenceDiagram
+    participant UI as Angular UI
+    participant API as AuthController
+    participant Auth as AuthService
+    participant H2 as H2 Users + Tokens
+
+    UI->>API: POST /api/v1/auth/register or /login
+    API->>Auth: validate credentials
+    Auth->>H2: save / load user
+    Auth->>H2: create session token
+    API-->>UI: token + user profile
+    UI->>API: subsequent protected requests with Bearer token
+```
 
 #### Document ingestion flow
 
@@ -76,8 +101,9 @@ sequenceDiagram
     participant Chroma as ChromaDB
     participant H2 as H2 Metadata
 
-    UI->>API: POST /api/v1/projects/{projectId}/documents/ingest
+    UI->>API: POST /api/v1/projects/{projectId}/documents/ingest + Bearer token
     API->>Service: ingest(files)
+    Service->>H2: verify authenticated user owns project
     Service->>Store: persist file
     Service->>H2: save document record (INDEXING)
     Service->>Tika: extract text
@@ -98,8 +124,9 @@ sequenceDiagram
     participant Ollama as Ollama
     participant H2 as H2 Conversations
 
-    UI->>API: POST /api/v1/projects/{projectId}/chat/messages
+    UI->>API: POST /api/v1/projects/{projectId}/chat/messages + Bearer token
     API->>Rag: chat(prompt, conversationId)
+    Rag->>H2: verify authenticated user owns project
     Rag->>H2: fetch prior conversation
     Rag->>Chroma: similarity search
     Rag->>Ollama: grounded prompt + retrieved context
@@ -128,7 +155,7 @@ sequenceDiagram
 #### Why H2 plus ChromaDB
 
 - H2 stores operational metadata: upload status, filenames, checksums, and conversation history.
-- H2 also stores project ownership so retrieval and chat stay project-specific.
+- H2 also stores users, session tokens, and project ownership so retrieval and chat stay both user-scoped and project-specific.
 - ChromaDB stores chunk embeddings and supports similarity search.
 - Separating operational persistence from vector persistence keeps responsibilities clear.
 
@@ -166,15 +193,24 @@ com.aeon.documentrag.backend
 
 #### `ProjectController`
 
+- Requires an authenticated user for all project endpoints
 - Creates project workspaces
-- Lists available projects
+- Lists only the current user's projects
 - Deletes a project with its knowledge base and conversation history
 
 #### `ChatController`
 
+- Requires an authenticated user for all chat endpoints
 - Accepts project-scoped chat prompts
 - Returns generated answer plus citations
 - Exposes project-scoped conversation read/delete endpoints
+
+#### `AuthController`
+
+- Registers new users
+- Logs users in and returns a bearer token
+- Returns the authenticated user profile
+- Invalidates the current session token on logout
 
 #### `DocumentService`
 
@@ -218,9 +254,29 @@ com.aeon.documentrag.backend
 
 Tracks:
 
+- owning user
 - project identity
 - project name and description
 - creation/update timestamps
+
+#### `UserEntity`
+
+Tracks:
+
+- user identity
+- display name
+- unique email
+- password hash
+- creation/update timestamps
+
+#### `AuthTokenEntity`
+
+Tracks:
+
+- bearer token value
+- owning user
+- issued time
+- expiry time
 
 #### `DocumentRecordEntity`
 
@@ -290,6 +346,55 @@ Tracks:
 
 ### Endpoint detail
 
+All endpoints except `POST /api/v1/auth/register`, `POST /api/v1/auth/login`, Swagger, H2 console, and health/info require:
+
+- `Authorization: Bearer <token>`
+
+#### `POST /api/v1/auth/register`
+
+Request JSON:
+
+```json
+{
+  "name": "Aeon Tanvir",
+  "email": "aeon@example.com",
+  "password": "password123"
+}
+```
+
+Response:
+
+- bearer token
+- authenticated user profile
+
+#### `POST /api/v1/auth/login`
+
+Request JSON:
+
+```json
+{
+  "email": "aeon@example.com",
+  "password": "password123"
+}
+```
+
+Response:
+
+- bearer token
+- authenticated user profile
+
+#### `GET /api/v1/auth/me`
+
+Response:
+
+- current authenticated user profile
+
+#### `DELETE /api/v1/auth/logout`
+
+Behavior:
+
+- invalidates the current bearer token
+
 #### `POST /api/v1/projects`
 
 Request JSON:
@@ -303,7 +408,7 @@ Request JSON:
 
 Response:
 
-- created project metadata with document and conversation counts
+- created project metadata with document and conversation counts for the authenticated user
 
 #### `POST /api/v1/projects/{projectId}/documents/ingest`
 
@@ -321,7 +426,7 @@ Response:
 
 Response:
 
-- all document metadata records for that project ordered by newest first
+- all document metadata records for that project ordered by newest first, only if the authenticated user owns the project
 
 #### `DELETE /api/v1/projects/{projectId}/documents/{documentId}`
 
@@ -329,7 +434,7 @@ Behavior:
 
 - deletes chunk IDs from ChromaDB
 - deletes local stored file
-- deletes H2 metadata record only for the selected project
+- deletes H2 metadata record only for the selected project owned by the authenticated user
 
 #### `POST /api/v1/projects/{projectId}/chat/messages`
 
@@ -417,6 +522,10 @@ Swagger UI:
 
 Main endpoints:
 
+- `POST /api/v1/auth/register` creates a user account
+- `POST /api/v1/auth/login` returns a bearer token and user profile
+- `GET /api/v1/auth/me` returns the authenticated user profile
+- `DELETE /api/v1/auth/logout` invalidates the current bearer token
 - `POST /api/v1/projects` creates a project
 - `GET /api/v1/projects` lists projects
 - `GET /api/v1/projects/{projectId}` fetches project details
@@ -431,22 +540,24 @@ Main endpoints:
 
 ## Project workflow
 
-1. Create a project in the Angular UI or via `POST /api/v1/projects`.
-2. Select that project as the active workspace.
-3. Upload documents into the selected project.
-4. Ask questions in chat.
-5. Retrieval is filtered by `projectId`, so the assistant only searches and learns from the selected project's indexed chunks.
+1. Register or log in in the Angular UI or via `/api/v1/auth/register` and `/api/v1/auth/login`.
+2. Create a project in the Angular UI or via `POST /api/v1/projects`.
+3. Select that project as the active workspace.
+4. Upload documents into the selected project.
+5. Ask questions in chat.
+6. Retrieval is filtered by `projectId`, and project access is filtered by the authenticated user, so one user only searches their own project's indexed chunks.
 
 ## How ingestion works
 
-1. A project is created and selected.
+1. An authenticated user creates and selects a project.
 2. A file is uploaded into that project through the REST API or Angular UI.
-3. Spring stores the file locally.
-4. Apache Tika extracts text from the source document.
-5. Spring AI `TokenTextSplitter` breaks text into semantic-friendly chunks.
-6. Each chunk is annotated with metadata such as `projectId`, `documentId`, filename, checksum, and chunk index.
-7. Chunks are embedded through Ollama and stored in ChromaDB.
-8. The chat endpoint retrieves only chunks whose metadata matches the selected `projectId` and sends them to the model through a RAG advisor.
+3. Spring verifies that the current user owns the target project.
+4. Spring stores the file locally.
+5. Apache Tika extracts text from the source document.
+6. Spring AI `TokenTextSplitter` breaks text into semantic-friendly chunks.
+7. Each chunk is annotated with metadata such as `projectId`, `documentId`, filename, checksum, and chunk index.
+8. Chunks are embedded through Ollama and stored in ChromaDB.
+9. The chat endpoint retrieves only chunks whose metadata matches the selected `projectId` after project ownership is validated for the authenticated user.
 
 ## Prerequisites
 
@@ -499,9 +610,10 @@ Frontend URL:
 
 After the app opens:
 
-1. Create a project.
-2. Upload documents into that project.
-3. Chat against the selected project's indexed knowledge base.
+1. Register or log in.
+2. Create a project.
+3. Upload documents into that project.
+4. Chat against the selected project's indexed knowledge base.
 
 ## Configuration notes
 
@@ -514,9 +626,17 @@ Important values:
 - `spring.ai.ollama.embedding.options.model`
 - `spring.ai.vectorstore.chroma.client.host`
 - `spring.ai.vectorstore.chroma.client.port`
+- `spring.datasource.url`
 - `app.rag.chunk-size`
 - `app.rag.similarity-threshold`
 - `app.storage.upload-dir`
+
+## Auth notes
+
+- The backend uses stateless bearer-token authentication backed by H2-stored session tokens.
+- Protected API requests must include `Authorization: Bearer <token>`.
+- The Angular app persists the token locally and automatically attaches it to `/api/*` requests.
+- Swagger UI is public, but protected endpoints still need a valid bearer token when called outside the Angular app.
 
 ## Frontend features
 
