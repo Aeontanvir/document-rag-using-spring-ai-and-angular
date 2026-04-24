@@ -3,7 +3,8 @@ import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signa
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { finalize } from 'rxjs';
-import { ChatMessageViewModel, DocumentMetadata, ProjectSummary } from '../../core/models/api.models';
+import { AuthUser, ChatMessageViewModel, DocumentMetadata, ProjectSummary } from '../../core/models/api.models';
+import { AuthService } from '../../core/services/auth.service';
 import { ChatApiService } from '../../core/services/chat-api.service';
 import { DocumentApiService } from '../../core/services/document-api.service';
 import { ProjectApiService } from '../../core/services/project-api.service';
@@ -18,11 +19,15 @@ import { MessageBubbleComponent } from '../../shared/components/message-bubble/m
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ChatShellComponent {
+  private readonly authService = inject(AuthService);
   private readonly chatApi = inject(ChatApiService);
   private readonly documentApi = inject(DocumentApiService);
   private readonly projectApi = inject(ProjectApiService);
   private readonly destroyRef = inject(DestroyRef);
 
+  protected readonly currentUser = computed(() => this.authService.user());
+  protected readonly isAuthenticated = computed(() => this.authService.isAuthenticated());
+  protected readonly authMode = signal<'login' | 'register'>('login');
   protected readonly projects = signal<ProjectSummary[]>([]);
   protected readonly selectedProjectId = signal<string | null>(null);
   protected readonly selectedProject = computed(
@@ -34,18 +39,101 @@ export class ChatShellComponent {
   protected readonly isSending = signal(false);
   protected readonly isCreatingProject = signal(false);
   protected readonly isDeletingProject = signal(false);
+  protected readonly isAuthenticating = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly uploadNotice = signal<string | null>(null);
+  protected readonly authErrorMessage = signal<string | null>(null);
+  protected readonly authNotice = signal<string | null>(null);
   protected readonly conversationId = signal<string | null>(null);
   protected readonly documentCount = computed(() => this.documents().length);
   protected readonly projectCount = computed(() => this.projects().length);
 
+  protected authNameDraft = '';
+  protected authEmailDraft = '';
+  protected authPasswordDraft = '';
   protected draft = '';
   protected projectNameDraft = '';
   protected projectDescriptionDraft = '';
 
   constructor() {
-    this.loadProjects();
+    if (this.isAuthenticated()) {
+      this.restoreSession();
+    }
+  }
+
+  protected setAuthMode(mode: 'login' | 'register'): void {
+    if (this.authMode() === mode) {
+      return;
+    }
+
+    this.authMode.set(mode);
+    this.authErrorMessage.set(null);
+    this.authNotice.set(null);
+  }
+
+  protected submitAuth(): void {
+    const email = this.authEmailDraft.trim();
+    const password = this.authPasswordDraft;
+
+    if (!email || !password) {
+      this.authErrorMessage.set('Email and password are required.');
+      return;
+    }
+
+    if (this.authMode() === 'register' && !this.authNameDraft.trim()) {
+      this.authErrorMessage.set('Your name is required to create an account.');
+      return;
+    }
+
+    this.isAuthenticating.set(true);
+    this.authErrorMessage.set(null);
+    this.authNotice.set(null);
+
+    const request$ =
+      this.authMode() === 'register'
+        ? this.authService.register({
+            name: this.authNameDraft.trim(),
+            email,
+            password
+          })
+        : this.authService.login({
+            email,
+            password
+          });
+
+    request$
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        finalize(() => this.isAuthenticating.set(false))
+      )
+      .subscribe({
+        next: () => {
+          this.authNameDraft = '';
+          this.authEmailDraft = '';
+          this.authPasswordDraft = '';
+          this.authNotice.set(this.authMode() === 'register' ? 'Account created successfully.' : null);
+          this.resetWorkspace();
+          this.loadProjects();
+        },
+        error: (error) => this.authErrorMessage.set(error.error?.message ?? 'Authentication failed.')
+      });
+  }
+
+  protected logout(): void {
+    this.isAuthenticating.set(true);
+    this.authErrorMessage.set(null);
+    this.authNotice.set(null);
+
+    this.authService
+      .logout()
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        finalize(() => this.isAuthenticating.set(false))
+      )
+      .subscribe(() => {
+        this.resetWorkspace();
+        this.authNotice.set('Signed out successfully.');
+      });
   }
 
   protected createProject(): void {
@@ -74,7 +162,7 @@ export class ChatShellComponent {
           this.uploadNotice.set(`Project "${project.name}" is ready for project-wise RAG.`);
           this.loadProjects(project.id);
         },
-        error: (error) => this.errorMessage.set(error.error?.message ?? 'Unable to create project.')
+        error: (error) => this.errorMessage.set(this.resolveApiError(error, 'Unable to create project.'))
       });
   }
 
@@ -110,7 +198,7 @@ export class ChatShellComponent {
           this.uploadNotice.set(`Project "${project.name}" was deleted.`);
           this.loadProjects();
         },
-        error: (error) => this.errorMessage.set(error.error?.message ?? 'Unable to delete project.')
+        error: (error) => this.errorMessage.set(this.resolveApiError(error, 'Unable to delete project.'))
       });
   }
 
@@ -150,7 +238,7 @@ export class ChatShellComponent {
           this.loadProjects(projectId);
           this.loadDocuments(projectId);
         },
-        error: (error) => this.errorMessage.set(error.error?.message ?? 'Document upload failed.')
+        error: (error) => this.errorMessage.set(this.resolveApiError(error, 'Document upload failed.'))
       });
   }
 
@@ -202,7 +290,7 @@ export class ChatShellComponent {
             ...messages,
             this.toViewMessage(
               'ASSISTANT',
-              error.error?.message ?? 'The backend could not complete the project-scoped RAG request.',
+              this.resolveApiError(error, 'The backend could not complete the project-scoped RAG request.'),
               new Date().toISOString()
             )
           ]);
@@ -232,7 +320,7 @@ export class ChatShellComponent {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => this.resetConversation(),
-        error: (error) => this.errorMessage.set(error.error?.message ?? 'Unable to clear conversation.')
+        error: (error) => this.errorMessage.set(this.resolveApiError(error, 'Unable to clear conversation.'))
       });
   }
 
@@ -250,7 +338,7 @@ export class ChatShellComponent {
           this.loadProjects(projectId);
           this.loadDocuments(projectId);
         },
-        error: (error) => this.errorMessage.set(error.error?.message ?? 'Unable to delete document.')
+        error: (error) => this.errorMessage.set(this.resolveApiError(error, 'Unable to delete document.'))
       });
   }
 
@@ -267,6 +355,11 @@ export class ChatShellComponent {
   }
 
   private loadProjects(preferredProjectId?: string): void {
+    if (!this.isAuthenticated()) {
+      this.resetWorkspace();
+      return;
+    }
+
     this.projectApi
       .listProjects()
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -290,12 +383,12 @@ export class ChatShellComponent {
 
           this.loadDocuments(nextProjectId);
         },
-        error: (error) => this.errorMessage.set(error.error?.message ?? 'Unable to load projects.')
+        error: (error) => this.errorMessage.set(this.resolveApiError(error, 'Unable to load projects.'))
       });
   }
 
   private loadDocuments(projectId = this.selectedProjectId()): void {
-    if (!projectId) {
+    if (!projectId || !this.isAuthenticated()) {
       this.documents.set([]);
       return;
     }
@@ -305,8 +398,34 @@ export class ChatShellComponent {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (documents) => this.documents.set(documents),
-        error: (error) => this.errorMessage.set(error.error?.message ?? 'Unable to load documents.')
+        error: (error) => this.errorMessage.set(this.resolveApiError(error, 'Unable to load documents.'))
       });
+  }
+
+  private restoreSession(): void {
+    this.isAuthenticating.set(true);
+    this.authErrorMessage.set(null);
+
+    this.authService
+      .fetchCurrentUser()
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        finalize(() => this.isAuthenticating.set(false))
+      )
+      .subscribe({
+        next: (user) => this.handleAuthenticatedUser(user),
+        error: (error) => {
+          this.authService.clearSession();
+          this.resetWorkspace();
+          this.authErrorMessage.set(error.error?.message ?? 'Your session expired. Please log in again.');
+        }
+      });
+  }
+
+  private handleAuthenticatedUser(user: AuthUser): void {
+    this.authNotice.set(`Welcome back, ${user.name}.`);
+    this.errorMessage.set(null);
+    this.loadProjects();
   }
 
   private resolveSelectedProjectId(projects: ProjectSummary[], preferredProjectId?: string): string | null {
@@ -331,5 +450,26 @@ export class ChatShellComponent {
       createdAt,
       citations: []
     };
+  }
+
+  private resetWorkspace(): void {
+    this.projects.set([]);
+    this.selectedProjectId.set(null);
+    this.documents.set([]);
+    this.messages.set([]);
+    this.projectNameDraft = '';
+    this.projectDescriptionDraft = '';
+    this.resetConversation();
+  }
+
+  private resolveApiError(error: { status?: number; error?: { message?: string } }, fallback: string): string {
+    if (error.status === 401) {
+      this.authService.clearSession();
+      this.resetWorkspace();
+      this.authErrorMessage.set('Please log in again to continue.');
+      return 'Please log in again to continue.';
+    }
+
+    return error.error?.message ?? fallback;
   }
 }
