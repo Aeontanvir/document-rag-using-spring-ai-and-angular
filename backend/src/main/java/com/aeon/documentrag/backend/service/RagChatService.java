@@ -41,8 +41,8 @@ public class RagChatService {
         this.projectService = projectService;
     }
 
-    public ChatResponse chat(String projectId, ChatRequest request) {
-        ProjectEntity project = projectService.getProjectEntity(projectId);
+    public ChatResponse chat(String ownerId, String projectId, ChatRequest request) {
+        ProjectEntity project = projectService.getProjectEntity(ownerId, projectId);
         String conversationId = conversationService.ensureConversation(request.conversationId(), project, request.prompt());
         String history = conversationService.renderConversationHistory(conversationId, ragProperties.conversationHistoryLimit());
         SearchRequest searchRequest = SearchRequest.builder()

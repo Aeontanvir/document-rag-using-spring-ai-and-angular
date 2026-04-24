@@ -2,6 +2,7 @@ package com.aeon.documentrag.backend.controller;
 
 import com.aeon.documentrag.backend.dto.DocumentMetadataResponse;
 import com.aeon.documentrag.backend.dto.UploadBatchResponse;
+import com.aeon.documentrag.backend.security.AuthenticatedUser;
 import com.aeon.documentrag.backend.service.DocumentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
@@ -13,6 +14,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -45,9 +47,10 @@ public class DocumentController {
                     @ApiResponse(responseCode = "400", description = "Unsupported or invalid file", content = @Content(schema = @Schema(hidden = true)))
             }
     )
-    public ResponseEntity<UploadBatchResponse> ingestDocuments(@PathVariable String projectId,
+    public ResponseEntity<UploadBatchResponse> ingestDocuments(@AuthenticationPrincipal AuthenticatedUser authenticatedUser,
+                                                               @PathVariable String projectId,
                                                                @RequestPart("files") List<MultipartFile> files) {
-        return ResponseEntity.ok(documentService.ingest(projectId, files));
+        return ResponseEntity.ok(documentService.ingest(authenticatedUser.id(), projectId, files));
     }
 
     @GetMapping
@@ -55,22 +58,25 @@ public class DocumentController {
             @ApiResponse(responseCode = "200", description = "Document list",
                     content = @Content(array = @ArraySchema(schema = @Schema(implementation = DocumentMetadataResponse.class))))
     })
-    public ResponseEntity<List<DocumentMetadataResponse>> listDocuments(@PathVariable String projectId) {
-        return ResponseEntity.ok(documentService.listDocuments(projectId));
+    public ResponseEntity<List<DocumentMetadataResponse>> listDocuments(@AuthenticationPrincipal AuthenticatedUser authenticatedUser,
+                                                                       @PathVariable String projectId) {
+        return ResponseEntity.ok(documentService.listDocuments(authenticatedUser.id(), projectId));
     }
 
     @GetMapping("/{documentId}")
     @Operation(summary = "Get a document record")
-    public ResponseEntity<DocumentMetadataResponse> getDocument(@PathVariable String projectId,
+    public ResponseEntity<DocumentMetadataResponse> getDocument(@AuthenticationPrincipal AuthenticatedUser authenticatedUser,
+                                                               @PathVariable String projectId,
                                                                @PathVariable String documentId) {
-        return ResponseEntity.ok(documentService.getDocument(projectId, documentId));
+        return ResponseEntity.ok(documentService.getDocument(authenticatedUser.id(), projectId, documentId));
     }
 
     @DeleteMapping("/{documentId}")
     @Operation(summary = "Delete a document and its vector chunks")
-    public ResponseEntity<Void> deleteDocument(@PathVariable String projectId,
+    public ResponseEntity<Void> deleteDocument(@AuthenticationPrincipal AuthenticatedUser authenticatedUser,
+                                               @PathVariable String projectId,
                                                @PathVariable String documentId) {
-        documentService.deleteDocument(projectId, documentId);
+        documentService.deleteDocument(authenticatedUser.id(), projectId, documentId);
         return ResponseEntity.noContent().build();
     }
 }

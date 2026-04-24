@@ -3,8 +3,6 @@ package com.aeon.documentrag.backend.entity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -16,24 +14,23 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "projects")
+@Table(name = "users")
 @Getter
 @Setter
 @NoArgsConstructor
-public class ProjectEntity {
+public class UserEntity {
 
     @Id
     private String id;
 
-    @Column(nullable = false, length = 150)
+    @Column(nullable = false, length = 120)
     private String name;
 
-    @ManyToOne
-    @JoinColumn(name = "owner_id")
-    private UserEntity owner;
+    @Column(nullable = false, unique = true, length = 180)
+    private String email;
 
-    @Column(length = 2000)
-    private String description;
+    @Column(nullable = false, length = 120)
+    private String passwordHash;
 
     @Column(nullable = false)
     private Instant createdAt;

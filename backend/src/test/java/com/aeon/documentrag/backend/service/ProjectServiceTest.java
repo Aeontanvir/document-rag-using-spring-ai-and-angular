@@ -4,10 +4,12 @@ import com.aeon.documentrag.backend.dto.ProjectCreateRequest;
 import com.aeon.documentrag.backend.dto.ProjectResponse;
 import com.aeon.documentrag.backend.entity.DocumentRecordEntity;
 import com.aeon.documentrag.backend.entity.ProjectEntity;
+import com.aeon.documentrag.backend.entity.UserEntity;
 import com.aeon.documentrag.backend.repository.ConversationMessageRepository;
 import com.aeon.documentrag.backend.repository.ConversationRepository;
 import com.aeon.documentrag.backend.repository.DocumentRecordRepository;
 import com.aeon.documentrag.backend.repository.ProjectRepository;
+import com.aeon.documentrag.backend.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -50,6 +52,9 @@ class ProjectServiceTest {
     @Mock
     private VectorStore vectorStore;
 
+    @Mock
+    private UserRepository userRepository;
+
     private ProjectService projectService;
 
     @BeforeEach
@@ -61,13 +66,17 @@ class ProjectServiceTest {
                 conversationMessageRepository,
                 documentChunkingService,
                 fileStorageService,
-                vectorStore
+                vectorStore,
+                userRepository
         );
     }
 
     @Test
     void createProjectShouldTrimFieldsBeforeSaving() {
         Instant now = Instant.parse("2026-04-23T10:15:30Z");
+        UserEntity owner = new UserEntity();
+        owner.setId("user-1");
+        when(userRepository.findById("user-1")).thenReturn(java.util.Optional.of(owner));
         when(projectRepository.save(any(ProjectEntity.class))).thenAnswer(invocation -> {
             ProjectEntity entity = invocation.getArgument(0);
             entity.setId("project-1");
@@ -76,19 +85,20 @@ class ProjectServiceTest {
             return entity;
         });
 
-        ProjectResponse response = projectService.createProject(new ProjectCreateRequest("  Knowledge Hub  ", "  Docs and notes  "));
+        ProjectResponse response = projectService.createProject("user-1", new ProjectCreateRequest("  Knowledge Hub  ", "  Docs and notes  "));
 
         ArgumentCaptor<ProjectEntity> entityCaptor = ArgumentCaptor.forClass(ProjectEntity.class);
         verify(projectRepository).save(entityCaptor.capture());
         assertThat(entityCaptor.getValue().getName()).isEqualTo("Knowledge Hub");
         assertThat(entityCaptor.getValue().getDescription()).isEqualTo("Docs and notes");
+        assertThat(entityCaptor.getValue().getOwner()).isSameAs(owner);
         assertThat(response.name()).isEqualTo("Knowledge Hub");
         assertThat(response.description()).isEqualTo("Docs and notes");
     }
 
     @Test
     void createProjectShouldRejectBlankNames() {
-        assertThatThrownBy(() -> projectService.createProject(new ProjectCreateRequest("   ", "ignored")))
+        assertThatThrownBy(() -> projectService.createProject("user-1", new ProjectCreateRequest("   ", "ignored")))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Project name is required");
     }
@@ -108,13 +118,13 @@ class ProjectServiceTest {
         secondDocument.setChunkCount(0);
         secondDocument.setStoragePath("/tmp/doc-2.txt");
 
-        when(projectRepository.findById("project-123")).thenReturn(java.util.Optional.of(project));
+        when(projectRepository.findByIdAndOwner_Id("project-123", "user-1")).thenReturn(java.util.Optional.of(project));
         when(documentRecordRepository.findAllByProject_Id("project-123")).thenReturn(List.of(firstDocument, secondDocument));
         when(conversationRepository.findAllByProject_IdOrderByUpdatedAtDesc("project-123")).thenReturn(List.of());
         when(documentChunkingService.buildChunkId("doc-1", 1)).thenReturn("doc-1-chunk-1");
         when(documentChunkingService.buildChunkId("doc-1", 2)).thenReturn("doc-1-chunk-2");
 
-        projectService.deleteProject("project-123");
+        projectService.deleteProject("user-1", "project-123");
 
         verify(vectorStore).delete(List.of("doc-1-chunk-1", "doc-1-chunk-2"));
         verify(fileStorageService).deleteIfExists("/tmp/doc-1.pdf");

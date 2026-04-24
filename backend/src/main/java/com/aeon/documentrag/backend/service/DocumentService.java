@@ -41,11 +41,11 @@ public class DocumentService {
     private final ProjectService projectService;
 
     @Transactional
-    public UploadBatchResponse ingest(String projectId, List<MultipartFile> files) {
+    public UploadBatchResponse ingest(String ownerId, String projectId, List<MultipartFile> files) {
         if (files == null || files.isEmpty()) {
             throw new IllegalArgumentException("At least one file must be uploaded");
         }
-        ProjectEntity project = projectService.getProjectEntity(projectId);
+        ProjectEntity project = projectService.getProjectEntity(ownerId, projectId);
 
         List<DocumentMetadataResponse> uploadedDocuments = files.stream()
                 .map(file -> ingestSingle(project, file))
@@ -54,20 +54,22 @@ public class DocumentService {
         return new UploadBatchResponse(uploadedDocuments.size(), uploadedDocuments);
     }
 
-    public List<DocumentMetadataResponse> listDocuments(String projectId) {
-        projectService.getProjectEntity(projectId);
+    public List<DocumentMetadataResponse> listDocuments(String ownerId, String projectId) {
+        projectService.getProjectEntity(ownerId, projectId);
         return documentRecordRepository.findAllByProject_IdOrderByCreatedAtDesc(projectId)
                 .stream()
                 .map(DocumentMapper::toResponse)
                 .toList();
     }
 
-    public DocumentMetadataResponse getDocument(String projectId, String documentId) {
+    public DocumentMetadataResponse getDocument(String ownerId, String projectId, String documentId) {
+        projectService.getProjectEntity(ownerId, projectId);
         return DocumentMapper.toResponse(findDocument(projectId, documentId));
     }
 
     @Transactional
-    public void deleteDocument(String projectId, String documentId) {
+    public void deleteDocument(String ownerId, String projectId, String documentId) {
+        projectService.getProjectEntity(ownerId, projectId);
         DocumentRecordEntity entity = findDocument(projectId, documentId);
         List<String> chunkIds = IntStream.rangeClosed(1, entity.getChunkCount())
                 .mapToObj(index -> documentChunkingService.buildChunkId(documentId, index))
